@@ -3,8 +3,8 @@ import sys
 import math
 import time
 import findspark
-findspark.init()
-from pyspark import SparkContext  
+findspark.init()        
+from pyspark import SparkContext          
 from pyspark import SparkConf
 
 # Function to read points from a file
@@ -14,6 +14,7 @@ def read_points(file_name):
         for line in file:
             x, y = map(float, line.strip().split(',')) # Split each line by comma and convert to float
             points.append((x, y)) # Add the point to the list
+            
     return points
 
 def MRApproxOutliers(points_rdd, D, M, K):
