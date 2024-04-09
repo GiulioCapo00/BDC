@@ -4,7 +4,7 @@ import math
 import time
 import findspark
 findspark.init()        
-from pyspark import SparkContext          
+from pyspark import SparkContext  
 from pyspark import SparkConf
 
 # Function to read points from a file
@@ -14,7 +14,6 @@ def read_points(file_name):
         for line in file:
             x, y = map(float, line.strip().split(',')) # Split each line by comma and convert to float
             points.append((x, y)) # Add the point to the list
-            
     return points
 
 def MRApproxOutliers(points_rdd, D, M, K):
@@ -41,11 +40,12 @@ def MRApproxOutliers(points_rdd, D, M, K):
             return a + b
 
         # Transform points RDD into an RDD of cell counts
-        cells_rdd = points_rdd.map(map_to_cells).reduceByKey(reduce_to_points).mapPartitions(reduce_to_points_within_partition).reduceByKey(reduce_to_points)
+        cells_rdd = points_rdd.map(map_to_cells).reduceByKey(reduce_to_points)
 
         # Collect non-empty cells to the driver
         collected_cells = cells_rdd.collect()
-
+        
+        #print(collected_cells)
         # Step B: Determine outliers
         num_sure_outliers = 0
         num_uncertain_points = 0
@@ -53,28 +53,29 @@ def MRApproxOutliers(points_rdd, D, M, K):
 
         for cell in collected_cells:
             (i, j), points = cell
+            #print(cell)
 
             # Define the region R3(Cp) and R7(Cp)# Define the region R3(Cp) and R7(Cp) with positive coordinates
-            region_7 = [(i + dx, j + dy) for dx in range(-3, 4) for dy in range(-3, 4) if (i + dx) >= 0 and (j + dy) >= 0]  # Region R7(Cp)
-            region_3 = [(i + dx, j + dy) for dx in range(-1, 2) for dy in range(-1, 2) if (i + dx, j + dy) in region_7]  # Region R3(Cp)
+            region_7 = [(i + dx, j + dy) for dx in range(-3, 4) for dy in range(-3, 4)]  # Region R7(Cp)
+            region_3 = [(i + dx, j + dy) for dx in range(-1, 2) for dy in range(-1, 2)]  # Region R3(Cp)
 
             # Calculate N3(Cp) and N7(Cp) based on the points within the cell
-            N3 = sum(1 for cell in collected_cells if cell[0] in region_3)  # Number of points in R3(Cp)∩S
-            N7 = sum(1 for cell in collected_cells if cell[0] in region_7)  # Number of points in R7(Cp)∩S
+            N3 = sum(cell[1] for cell in collected_cells if cell[0] in region_3)  # Number of points in R3(Cp)∩S
+            N7 = sum(cell[1] for cell in collected_cells if cell[0] in region_7)  # Number of points in R7(Cp)∩S
 
             # Determine sure outliers, uncertain points, and outliers
-            if N3 > M:
-                num_sure_outliers += 1
-            elif N3 <= M:
-                if N7 > M:
-                    num_uncertain_points += 1
-                elif N7 <= M:
-                    num_sure_outliers += 1
+            if N7<=M :
+                num_sure_outliers += points
             else:
-                outliers.append((i, j))
+                if N3<=M :
+                    num_uncertain_points += points
+
+            #print(N7)
+            #print(num_sure_outliers)
+
 
         # Sort cells by size in non-decreasing order and take the first K cells
-        sorted_cells = cells_rdd.sortBy(lambda x: x[1], ascending=False).take(K)
+        sorted_cells = cells_rdd.sortBy(lambda x: x[1], ascending=True).take(K)
 
         end_time = time.time()
         running_time = int((end_time - start_time) * 1000)  # Convert to milliseconds
@@ -107,6 +108,7 @@ def main():
     try:
         points = read_points(file_name) # Read points from the input file
         points_rd = sc.parallelize(points)  # Convert points to RDD
+
 
         # Call the function to determine outliers
         num_sure_outliers, num_uncertain_points, sorted_cells, running_time = MRApproxOutliers(points_rd, D, M, K)
