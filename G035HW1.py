@@ -13,7 +13,6 @@ def read_points(line):
     return (x, y)
 
 def MRApproxOutliers(points_rdd, D, M, K):
-        start_time = time.time() # Record start time
 
         # Step A: Transform input RDD into RDD with non-empty cells and their point counts
         def map_to_cells(point):
@@ -31,7 +30,6 @@ def MRApproxOutliers(points_rdd, D, M, K):
         # Collect non-empty cells to the driver
         collected_cells = cells_rdd.collect()
         
-        #print(collected_cells)
         # Step B: Determine outliers
         num_sure_outliers = 0
         num_uncertain_points = 0
@@ -39,7 +37,6 @@ def MRApproxOutliers(points_rdd, D, M, K):
 
         for cell in collected_cells:
             (i, j), points = cell
-            #print(cell)
 
             # Define the region R3(Cp) and R7(Cp)# Define the region R3(Cp) and R7(Cp) with positive coordinates
             region_7 = [(i + dx, j + dy) for dx in range(-3, 4) for dy in range(-3, 4)]  # Region R7(Cp)
@@ -56,17 +53,14 @@ def MRApproxOutliers(points_rdd, D, M, K):
                 if N3<=M :
                     num_uncertain_points += points
 
-            #print(N7)
-            #print(num_sure_outliers)
-
 
         # Sort cells by size in non-decreasing order and take the first K cells
         sorted_cells = cells_rdd.sortBy(lambda x: x[1], ascending=True).take(K)
+        print("Number of sure outliers =", num_sure_outliers)
+        print("Number of uncertain points =", num_uncertain_points)
+        for cell in sorted_cells:
+            print("Cell:", cell[0], "Size =", cell[1])
 
-        end_time = time.time()
-        running_time = int((end_time - start_time) * 1000)  # Convert to milliseconds
-
-        return num_sure_outliers, num_uncertain_points, sorted_cells, running_time
 
 def ExactOutliers(points, D, M, K):
     
@@ -113,38 +107,47 @@ def ExactOutliers(points, D, M, K):
          
     
 
-    
-
-    #ExactOutliers(read_file("uber-100k.csv"),0.02,10,5)
     # Main function
 def main():    
 
-    # CHECKING NUMBER OF CMD LINE PARAMETERS
+    # CMD input
     assert len(sys.argv) >= 4, "Usage: python MRApproxOutliers.py <file_name> [D] [M] [K] [L]"
 
-    # SPARK SETUP
+    # Spark setup
     conf = SparkConf().setAppName('MRApproxOutliers')
     sc = SparkContext(conf=conf)
 
-    # INPUT READING
-
-    # 1. Read number of partitions
+    # Read number of partitions
     file_name = sys.argv[1]
     D = float(sys.argv[2]) if len(sys.argv) > 3 else 1
     M = int(sys.argv[3]) if len(sys.argv) > 4 else 3
     K = int(sys.argv[4])
     L = int(sys.argv[5])
-
-    # 2. Read input file and subdivide it into K random partitions
+    print("File name:",file_name,"  D:",D,"  M:",M,"  K:",K,"  L:",L)
+    
+    # Read input file and subdivide it into L random partitions
     data_path = file_name
     assert os.path.isfile(data_path), "File or folder not found"
     rawData = sc.textFile(data_path)
-    inputPoints = rawData.map(read_points)
-
-
-    print("File name:",file_name,"  D:",D,"  M:",M,"  K:",K,"  L:",L)
-if __name__ == "__main__":
+    inputPoints = rawData.map(read_points).repartition(L)
+    
+    # Total number of points
+    points_num=inputPoints.count()
+    print("Total number of points:",points_num)
+    
+    # Exwcute exact algorithm if points are less than 200000
+    if points_num<200000:
+        plain_points=inputPoints.collect()
+        start_time=time.time()
+        ExactOutliers(plain_points, D, M, K)
+        final_time=time.time()
+        print("Running time of Exact outliers:",round((final_time-start_time)*1000), " ms") 
+         
     start_time=time.time()
-    main()
+    MRApproxOutliers(inputPoints, D, M, K)
     final_time=time.time()
-    print("Computation time: ",round((final_time-start_time)*1000), " ms")   
+    print("Running time of Approximate outliers:",round((final_time-start_time)*1000), " ms") 
+
+if __name__ == "__main__":
+    main()
+    

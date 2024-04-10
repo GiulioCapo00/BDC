@@ -109,7 +109,6 @@ def main():
         points = read_points(file_name) # Read points from the input file
         points_rd = sc.parallelize(points)  # Convert points to RDD
 
-
         # Call the function to determine outliers
         num_sure_outliers, num_uncertain_points, sorted_cells, running_time = MRApproxOutliers(points_rd, D, M, K)
 
