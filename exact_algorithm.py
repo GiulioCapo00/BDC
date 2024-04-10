@@ -11,8 +11,8 @@ def read_file(file_name):
     points = []
     with open(file_name, 'r') as file:
         for line in file:
-            x, y = line.split(',') 
-            points.append((float(x), float(y))) 
+            x, y = map(float, line.strip().split(',')) # Split each line by comma and convert to float
+            points.append((x, y)) # Add the point to the list
     return points
 
 def ExactOutliers(points, D, M, K):
@@ -62,7 +62,7 @@ def ExactOutliers(points, D, M, K):
 
     
 def main():
-    ExactOutliers(read_file("uber-100k.csv"),0.02,10,5)
+    ExactOutliers(read_file("uber-10k.csv"),0.02,10,5)
     
 
 if __name__ == "__main__":
