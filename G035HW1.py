@@ -65,7 +65,6 @@ def MRApproxOutliers(points_rdd, D, M, K):
 def ExactOutliers(points, D, M, K):
     
     points_inside_radius = [0]*len(points) #Array to store the number of points with a distance less than D
-    total_points = len(points)
     outliers_num = 0
     outliers = []
     Dis = D*D #optimization of computational time by not using sqrt
@@ -98,12 +97,10 @@ def ExactOutliers(points, D, M, K):
             outliers.append([points[i],points_inside_radius[i]])
     sorted_outliers = sorted(outliers, key=lambda x: x[1])
 
-    
-    print("Number of points: ", total_points)
-    print("Number of Outliers: ", outliers_num)
+    print("Number of outliers =", outliers_num)
     for i in range(K):
         if i<len(sorted_outliers):
-            print(sorted_outliers[i][0])
+            print("Point:",sorted_outliers[i][0])
          
     
 
@@ -133,7 +130,7 @@ def main():
     
     # Total number of points
     points_num=inputPoints.count()
-    print("Total number of points:",points_num)
+    print("Number of points =",points_num)
     
     # Exwcute exact algorithm if points are less than 200000
     if points_num<200000:
