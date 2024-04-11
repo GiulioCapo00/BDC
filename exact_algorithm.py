@@ -63,6 +63,7 @@ def ExactOutliers(points, D, M, K):
     
 def main():
     ExactOutliers(read_file("uber-10k.csv"),0.02,10,5)
+    print(int(-0.8))
     
 
 if __name__ == "__main__":
